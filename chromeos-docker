@@ -1,0 +1,48 @@
+#!/bin/bash
+if [ ! -d $HOME/.ssh ]; then
+  echo "$HOME/.ssh directory does not exist."
+  echo "Add your GitHub ssh keys and try again."
+  exit 1
+fi
+if [ ! -d $(pwd)/pkg_cache ]; then
+  echo "$(pwd)/pkg_cache directory does not exist."
+  echo "Execute 'mkdir pkg_cache' and try again."
+  exit 1
+fi
+if [ ! -d $(pwd)/chromebrew ]; then
+  echo "$(pwd)/chromebrew directory does not exist."
+  echo "Execute 'git clone git@github.com:skycocker/chromebrew.git' and try again."
+  exit 1
+fi
+if ! test $1; then
+  echo "Usage: $(basename $0) armv7l|i686|x86_64"
+  exit 1
+fi
+case $1 in
+  aarch64|arm|armv7|armv7l|armv8)
+    ARCH=armv7l
+    BOARD=fievel
+    MILESTONE=m92
+    ;;
+  i386|i686|ia32|x86)
+    ARCH=i686
+    BOARD=alex
+    MILESTONE=m58
+    ;;
+  ia64|x64|x86_64)
+    ARCH=x86_64
+    BOARD=kip
+    MILESTONE=m92
+    ;;
+  *)
+    echo "Usage: $(basename $0) armv7l|i686|x86_64"
+    exit 1
+    ;;
+esac
+TAG=latest
+IMAGE=chromeos-$ARCH-$BOARD-$MILESTONE
+DOCKER_IMAGE=$(docker images -f "reference=$IMAGE:$TAG" | tail -1 | cut -d' ' -f1)
+if [ "$DOCKER_IMAGE" != "$IMAGE" ]; then
+  docker pull chromebrew/$IMAGE
+fi
+docker run --rm -v $(pwd)/pkg_cache:/usr/local/tmp/packages -v $(pwd)/chromebrew:/home/chronos/user/chromebrew -v $HOME/.ssh:/home/chronos/user/.ssh -h $(hostname)-$ARCH -it $IMAGE:$TAG /usr/local/bin/setarch $ARCH sudo -i -u chronos /usr/local/bin/bash -i
