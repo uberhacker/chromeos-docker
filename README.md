@@ -14,6 +14,7 @@ $ sudo cp chromeos-docker /usr/local/bin
 $ cd /path/to/projects
 $ git clone git@github.com:skycocker/chromebrew.git
 $ mkdir pkg_cache
+$ docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 ```
 
 ## Usage
