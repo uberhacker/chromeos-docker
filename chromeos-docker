@@ -11,7 +11,7 @@ if [ ! -d $(pwd)/pkg_cache ]; then
 fi
 if [ ! -d $(pwd)/chromebrew ]; then
   echo "$(pwd)/chromebrew directory does not exist."
-  echo "Execute 'git clone git@github.com:skycocker/chromebrew.git' and try again."
+  echo "Execute 'git clone https://github.com/chromebrew/chromebrew.git' and try again."
   exit 1
 fi
 if ! test $1; then
