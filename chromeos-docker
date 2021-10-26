@@ -22,7 +22,7 @@ case $1 in
   aarch64|arm|armv7|armv7l|armv8)
     ARCH=armv7l
     BOARD=fievel
-    MILESTONE=m92
+    MILESTONE=m91
     ;;
   i386|i686|ia32|x86)
     ARCH=i686
@@ -32,7 +32,7 @@ case $1 in
   ia64|x64|x86_64)
     ARCH=x86_64
     BOARD=kip
-    MILESTONE=m92
+    MILESTONE=m91
     ;;
   *)
     echo "Usage: $(basename $0) armv7l|i686|x86_64"
