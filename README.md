@@ -8,11 +8,11 @@ Bash script to launch ChromeOS with Chromebrew in Docker
 
 ## Installation
 ```bash
-$ git clone git@github.com:uberhacker/chromeos-docker.git
+$ git clone https://github.com/uberhacker/chromeos-docker.git
 $ cd chromeos-docker
 $ sudo cp chromeos-docker /usr/local/bin
 $ cd /path/to/projects
-$ git clone git@github.com:skycocker/chromebrew.git
+$ git clone https://github.com/chromebrew/chromebrew.git
 $ mkdir pkg_cache
 $ docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 ```

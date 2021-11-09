@@ -11,7 +11,7 @@ if [ ! -d $(pwd)/pkg_cache ]; then
 fi
 if [ ! -d $(pwd)/chromebrew ]; then
   echo "$(pwd)/chromebrew directory does not exist."
-  echo "Execute 'git clone git@github.com:skycocker/chromebrew.git' and try again."
+  echo "Execute 'git clone https://github.com/chromebrew/chromebrew.git' and try again."
   exit 1
 fi
 if ! test $1; then
@@ -22,17 +22,20 @@ case $1 in
   aarch64|arm|armv7|armv7l|armv8)
     ARCH=armv7l
     BOARD=fievel
-    MILESTONE=m92
+    MILESTONE=m91
+    PLATFORM=linux/arm/v7
     ;;
   i386|i686|ia32|x86)
     ARCH=i686
     BOARD=alex
     MILESTONE=m58
+    PLATFORM=linux/amd64
     ;;
   ia64|x64|x86_64)
     ARCH=x86_64
-    BOARD=kip
-    MILESTONE=m92
+    BOARD=nocturne
+    MILESTONE=m90
+    PLATFORM=linux/amd64
     ;;
   *)
     echo "Usage: $(basename $0) armv7l|i686|x86_64"
@@ -45,4 +48,4 @@ DOCKER_IMAGE=$(docker images -f "reference=$IMAGE:$TAG" | tail -1 | cut -d' ' -f
 if [ "$DOCKER_IMAGE" != "$IMAGE" ]; then
   docker pull chromebrew/$IMAGE
 fi
-docker run --rm -v $(pwd)/pkg_cache:/usr/local/tmp/packages -v $(pwd)/chromebrew:/home/chronos/user/chromebrew -v $HOME/.ssh:/home/chronos/user/.ssh -h $(hostname)-$ARCH -it chromebrew/$IMAGE:$TAG /usr/local/bin/setarch $ARCH sudo -i -u chronos /usr/local/bin/bash -i
+docker run --platform $PLATFORM --rm -v $(pwd)/pkg_cache:/usr/local/tmp/packages -v $(pwd)/chromebrew:/home/chronos/user/chromebrew -v $HOME/.ssh:/home/chronos/user/.ssh -h $(hostname)-$ARCH -it chromebrew/$IMAGE:$TAG /usr/local/bin/setarch $ARCH sudo -i -u chronos /usr/local/bin/bash -i
