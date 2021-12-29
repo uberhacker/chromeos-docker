@@ -48,4 +48,5 @@ DOCKER_IMAGE=$(docker images -f "reference=$IMAGE:$TAG" | tail -1 | cut -d' ' -f
 if [ "$DOCKER_IMAGE" != "$IMAGE" ]; then
   docker pull chromebrew/$IMAGE
 fi
+docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 docker run --platform $PLATFORM --rm -v $(pwd)/pkg_cache:/usr/local/tmp/packages -v $(pwd)/chromebrew:/home/chronos/user/chromebrew -v $HOME/.ssh:/home/chronos/user/.ssh -h $(hostname)-$ARCH -it chromebrew/$IMAGE:$TAG /usr/local/bin/setarch $ARCH sudo -i -u chronos /usr/local/bin/bash -i
