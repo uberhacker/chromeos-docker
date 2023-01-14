@@ -29,7 +29,7 @@ case $1 in
     ARCH=i686
     BOARD=alex
     MILESTONE=m58
-    PLATFORM=linux/amd64
+    PLATFORM=linux/386
     ;;
   ia64|x64|x86_64)
     ARCH=x86_64
