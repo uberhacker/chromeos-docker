@@ -1,24 +1,26 @@
 #!/bin/bash
-if [ ! -d $HOME/.ssh ]; then
+SCRIPT_NAME=$(basename "$0")
+USAGE="Usage: $SCRIPT_NAME armv7l|i686|x86_64"
+if [ ! -d "$HOME/.ssh" ]; then
   echo "$HOME/.ssh directory does not exist."
   echo "Add your GitHub ssh keys and try again."
   exit 1
 fi
-if [ ! -d $(pwd)/pkg_cache ]; then
+if [ ! -d "$(pwd)/pkg_cache" ]; then
   echo "$(pwd)/pkg_cache directory does not exist."
   echo "Execute 'mkdir pkg_cache' and try again."
   exit 1
 fi
-if [ ! -d $(pwd)/chromebrew ]; then
+if [ ! -d "$(pwd)/chromebrew" ]; then
   echo "$(pwd)/chromebrew directory does not exist."
   echo "Execute 'git clone https://github.com/chromebrew/chromebrew.git' and try again."
   exit 1
 fi
-if ! test $1; then
-  echo "Usage: $(basename $0) armv7l|i686|x86_64"
+if ! test "$1"; then
+  echo "$USAGE"
   exit 1
 fi
-case $1 in
+case "$1" in
   aarch64|arm|armv7|armv7l|armv8)
     ARCH=armv7l
     BOARD=fievel
@@ -38,15 +40,36 @@ case $1 in
     PLATFORM=linux/amd64
     ;;
   *)
-    echo "Usage: $(basename $0) armv7l|i686|x86_64"
+    echo "$USAGE"
     exit 1
     ;;
 esac
 TAG=latest
-IMAGE=chromeos-$ARCH-$BOARD-$MILESTONE
-DOCKER_IMAGE=$(docker images -f "reference=$IMAGE:$TAG" | tail -1 | cut -d' ' -f1)
+IMAGE="chromeos-$ARCH-$BOARD-$MILESTONE"
+DOCKER_IMAGE="$(docker images -f "reference=$IMAGE:$TAG" | tail -1 | cut -d' ' -f1)"
 if [ "$DOCKER_IMAGE" != "$IMAGE" ]; then
   docker pull chromebrew/$IMAGE
 fi
+SESSION_TYPE=
+if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
+  SESSION_TYPE=remote/ssh
+elif pstree -p | grep -E --quiet --extended-regexp ".*sshd.*\($$\)"; then
+  SESSION_TYPE=remote/ssh
+else
+  case $(ps -o comm= -p "$PPID") in
+    sshd|*/sshd) SESSION_TYPE=remote/ssh;;
+  esac
+fi
+X11="-e DISPLAY=${DISPLAY:-:0.0}"
+if [ "$SESSION_TYPE" == "remote/ssh" ]; then
+  echo "Connected remotely."
+elif [ -d "/tmp/.X11-unix" ]; then
+  echo "Connected locally."
+  X11+=" -v /tmp/.X11-unix:/tmp/.X11-unix"
+fi
+if [ -f "$HOME/.Xauthority" ]; then
+  X11+=" -v $HOME/.Xauthority:/home/chronos/user/.Xauthority:rw -v $HOME/.Xauthority:/home/chronos/.Xauthority:rw"
+fi
 docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-docker run --platform $PLATFORM --rm -v $(pwd)/pkg_cache:/usr/local/tmp/packages -v $(pwd)/chromebrew:/home/chronos/user/chromebrew -v $HOME/.ssh:/home/chronos/user/.ssh -h $(hostname)-$ARCH -it chromebrew/$IMAGE:$TAG /usr/local/bin/setarch $ARCH sudo -i -u chronos /bin/bash -i
+echo docker run --platform "$PLATFORM" --rm --network host "$X11" -v "$(pwd)/pkg_cache:/usr/local/tmp/packages" -v "$(pwd)/chromebrew:/home/chronos/user/chromebrew" -v "$HOME/.ssh:/home/chronos/user/.ssh" -h "$(hostname)-$ARCH" -it "chromebrew/$IMAGE:$TAG"
+docker run --platform "$PLATFORM" --rm --network host "$X11" -v "$(pwd)/pkg_cache:/usr/local/tmp/packages" -v "$(pwd)/chromebrew:/home/chronos/user/chromebrew" -v "$HOME/.ssh:/home/chronos/user/.ssh" -h "$(hostname)-$ARCH" -it "chromebrew/$IMAGE:$TAG"
