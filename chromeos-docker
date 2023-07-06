@@ -44,32 +44,38 @@ case "$1" in
     exit 1
     ;;
 esac
-TAG=latest
-IMAGE="chromeos-$ARCH-$BOARD-$MILESTONE"
-DOCKER_IMAGE="$(docker images -f "reference=$IMAGE:$TAG" | tail -1 | cut -d' ' -f1)"
-if [ "$DOCKER_IMAGE" != "$IMAGE" ]; then
-  docker pull chromebrew/$IMAGE
-fi
-SESSION_TYPE=
 if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
   SESSION_TYPE=remote/ssh
-elif pstree -p | grep -E --quiet --extended-regexp ".*sshd.*\($$\)"; then
+elif pstree -p | egrep --quiet --extended-regexp ".*sshd.*\($$\)"; then
   SESSION_TYPE=remote/ssh
 else
-  case $(ps -o comm= -p "$PPID") in
+  case $(ps -o comm= -p $PPID) in
     sshd|*/sshd) SESSION_TYPE=remote/ssh;;
   esac
 fi
-X11="-e DISPLAY=${DISPLAY:-:0.0}"
-if [ "$SESSION_TYPE" == "remote/ssh" ]; then
-  echo "Connected remotely."
-elif [ -d "/tmp/.X11-unix" ]; then
-  echo "Connected locally."
-  X11+=" -v /tmp/.X11-unix:/tmp/.X11-unix"
+if [ -z ${PAGER+x} ]; then
+  echo "PAGER is not set."
+else
+  PAGER_PASSTHROUGH=-e
+  PAGER_PASSTHROUGH+=" "
+  PAGER_PASSTHROUGH+=CONTAINER_PAGER=${PAGER}
 fi
-if [ -f "$HOME/.Xauthority" ]; then
-  X11+=" -v $HOME/.Xauthority:/home/chronos/user/.Xauthority:rw -v $HOME/.Xauthority:/home/chronos/.Xauthority:rw"
+X11+=" "
+X11=-e
+X11+=" "
+X11+=DISPLAY=${DISPLAY:-:0.0}
+X11+=" "
+if ! [[ $SESSION_TYPE == remote/ssh ]] && [ -d /tmp/.X11-unix ]; then
+  X11+=" -v /tmp/.X11-unix:/tmp/.X11-unix "
 fi
-docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-echo docker run --platform "$PLATFORM" --rm --network host "$X11" -v "$(pwd)/pkg_cache:/usr/local/tmp/packages" -v "$(pwd)/chromebrew:/home/chronos/user/chromebrew" -v "$HOME/.ssh:/home/chronos/user/.ssh" -h "$(hostname)-$ARCH" -it "chromebrew/$IMAGE:$TAG"
-docker run --platform "$PLATFORM" --rm --network host "$X11" -v "$(pwd)/pkg_cache:/usr/local/tmp/packages" -v "$(pwd)/chromebrew:/home/chronos/user/chromebrew" -v "$HOME/.ssh:/home/chronos/user/.ssh" -h "$(hostname)-$ARCH" -it "chromebrew/$IMAGE:$TAG"
+if [ -f "$HOME"/.Xauthority ]; then
+  X11+=--volume=$HOME/.Xauthority:/home/chronos/user/.Xauthority:rw
+  X11+=" "
+  X11+=--volume=$HOME/.Xauthority:/home/chronos/.Xauthority:rw
+fi
+IMAGE="chromebrew/chromeos-$ARCH-$BOARD-$MILESTONE:latest"
+docker pull --platform $PLATFORM $IMAGE
+docker pull tonistiigi/binfmt
+docker run --privileged --rm tonistiigi/binfmt --install all
+echo "docker run --platform $PLATFORM --rm --net=host ${PAGER_PASSTHROUGH} ${X11} -e LOCALRC="${LOCALRC}" -v $(pwd)/pkg_cache:/usr/local/tmp/packages -v $(pwd)/chromebrew:/home/chronos/user/chromebrew -v $(pwd):/output -h $(hostname)-$ARCH -it $IMAGE"
+docker run --platform $PLATFORM --rm --net=host ${PAGER_PASSTHROUGH} ${X11} -e LOCALRC="${LOCALRC}" -v $(pwd)/pkg_cache:/usr/local/tmp/packages -v $(pwd)/chromebrew:/home/chronos/user/chromebrew -v $(pwd):/output -h $(hostname)-$ARCH -it $IMAGE
