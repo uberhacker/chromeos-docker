@@ -44,6 +44,7 @@ case "$1" in
     exit 1
     ;;
 esac
+SESSION_TYPE=
 if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
   SESSION_TYPE=remote/ssh
 elif pstree -p | egrep --quiet --extended-regexp ".*sshd.*\($$\)"; then
@@ -53,25 +54,19 @@ else
     sshd|*/sshd) SESSION_TYPE=remote/ssh;;
   esac
 fi
-if [ -z ${PAGER+x} ]; then
+if [ -z ${PAGER} ]; then
+  PAGER_PASSTHROUGH=
   echo "PAGER is not set."
 else
-  PAGER_PASSTHROUGH=-e
-  PAGER_PASSTHROUGH+=" "
-  PAGER_PASSTHROUGH+=CONTAINER_PAGER=${PAGER}
+  PAGER_PASSTHROUGH="-e CONTAINER_PAGER=${PAGER}"
 fi
-X11+=" "
-X11=-e
-X11+=" "
-X11+=DISPLAY=${DISPLAY:-:0.0}
-X11+=" "
+X11="-e DISPLAY=${DISPLAY:-:0.0}"
 if ! [[ $SESSION_TYPE == remote/ssh ]] && [ -d /tmp/.X11-unix ]; then
-  X11+=" -v /tmp/.X11-unix:/tmp/.X11-unix "
+  X11+=" -v /tmp/.X11-unix:/tmp/.X11-unix"
 fi
 if [ -f "$HOME"/.Xauthority ]; then
-  X11+=--volume=$HOME/.Xauthority:/home/chronos/user/.Xauthority:rw
-  X11+=" "
-  X11+=--volume=$HOME/.Xauthority:/home/chronos/.Xauthority:rw
+  X11+=" -v $HOME/.Xauthority:/home/chronos/user/.Xauthority:rw"
+  X11+=" -v $HOME/.Xauthority:/home/chronos/.Xauthority:rw"
 fi
 IMAGE="chromebrew/chromeos-$ARCH-$BOARD-$MILESTONE:latest"
 docker pull --platform $PLATFORM $IMAGE
