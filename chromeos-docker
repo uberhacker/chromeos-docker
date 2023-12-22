@@ -44,6 +44,8 @@ case "$1" in
     exit 1
     ;;
 esac
+test "$2" && BOARD=$2
+test "$3" && MILESTONE=$3
 SESSION_TYPE=
 if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
   SESSION_TYPE=remote/ssh
@@ -60,7 +62,9 @@ if [ -z ${PAGER} ]; then
 else
   PAGER_PASSTHROUGH="-e CONTAINER_PAGER=${PAGER}"
 fi
-X11="-e DISPLAY=${DISPLAY:-:0.0}"
+CONTAINER_HOME=/home/chronos/user
+LOCALRC="${CONTAINER_HOME}/chromebrew/.env"
+ENVIRONMENT="-e DISPLAY=${DISPLAY:-:0.0} -e LOCALRC=${LOCALRC}"
 if ! [[ $SESSION_TYPE == remote/ssh ]] && [ -d /tmp/.X11-unix ]; then
   X11+=" -v /tmp/.X11-unix:/tmp/.X11-unix"
 fi
@@ -68,9 +72,9 @@ if [ -f "$HOME"/.Xauthority ]; then
   X11+=" -v $HOME/.Xauthority:/home/chronos/user/.Xauthority:rw"
   X11+=" -v $HOME/.Xauthority:/home/chronos/.Xauthority:rw"
 fi
-IMAGE="chromebrew/chromeos-$ARCH-$BOARD-$MILESTONE:latest"
+IMAGE="satmandu/crewbuild:$BOARD-$ARCH.$MILESTONE"
 docker pull --platform $PLATFORM $IMAGE
 docker pull tonistiigi/binfmt
 docker run --privileged --rm tonistiigi/binfmt --install all
-echo "docker run --platform $PLATFORM --rm --net=host ${PAGER_PASSTHROUGH} ${X11} -e LOCALRC="${LOCALRC}" -v $(pwd)/pkg_cache:/usr/local/tmp/packages -v $(pwd)/chromebrew:/home/chronos/user/chromebrew -v $(pwd):/output -h $(hostname)-$ARCH -it $IMAGE"
-docker run --platform $PLATFORM --rm --net=host ${PAGER_PASSTHROUGH} ${X11} -e LOCALRC="${LOCALRC}" -v $(pwd)/pkg_cache:/usr/local/tmp/packages -v $(pwd)/chromebrew:/home/chronos/user/chromebrew -v $(pwd):/output -h $(hostname)-$ARCH -it $IMAGE
+echo "docker run --platform $PLATFORM --rm --net=host ${PAGER_PASSTHROUGH} ${ENVIRONMENT} -v $(pwd)/pkg_cache:/usr/local/tmp/packages -v $(pwd)/chromebrew:${CONTAINER_HOME}/chromebrew -v $(pwd):/output -h $(hostname)-$ARCH -it $IMAGE"
+docker run --platform $PLATFORM --rm --net=host ${PAGER_PASSTHROUGH} ${ENVIRONMENT} -v $(pwd)/pkg_cache:/usr/local/tmp/packages -v $(pwd)/chromebrew:${CONTAINER_HOME}/chromebrew -v $(pwd):/output -h $(hostname)-$ARCH -it $IMAGE
