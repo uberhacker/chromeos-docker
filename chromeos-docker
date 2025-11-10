@@ -22,18 +22,21 @@ if ! test "$1"; then
 fi
 case "$1" in
   aarch64|arm|armv7|armv7l|armv8)
+    REPO=crew-pre-glibc-standalone
     ARCH=armv7l
     BOARD=fievel
     MILESTONE=m91
     PLATFORM=linux/arm/v7
     ;;
   i386|i686|ia32|x86)
+    REPO=crew-pre-glibc-standalone
     ARCH=i686
     BOARD=alex
     MILESTONE=m58
     PLATFORM=linux/386
     ;;
   ia64|x64|x86_64)
+    REPO=crew-pre-glibc-standalone
     ARCH=x86_64
     BOARD=nocturne
     MILESTONE=m90
@@ -44,8 +47,9 @@ case "$1" in
     exit 1
     ;;
 esac
-test "$2" && BOARD=$2
-test "$3" && MILESTONE=$3
+test "$2" && REPO=$2
+test "$3" && BOARD=$3
+test "$4" && MILESTONE=$4
 SESSION_TYPE=
 if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
   SESSION_TYPE=remote/ssh
@@ -63,18 +67,24 @@ else
   PAGER_PASSTHROUGH="-e CONTAINER_PAGER=${PAGER}"
 fi
 CONTAINER_HOME=/home/chronos/user
-LOCALRC="${CONTAINER_HOME}/chromebrew/.env"
-ENVIRONMENT="-e DISPLAY=${DISPLAY:-:0.0} -e LOCALRC=${LOCALRC}"
+ENVIRONMENT="-e DISPLAY=${DISPLAY:-:0.0}"
+#ENVIRONMENT+=" --env-file=${HOME}/chromebrew/.env"
+VOLUMES="-v $(pwd)/pkg_cache:/usr/local/tmp/packages"
+VOLUMES+=" -v $(pwd)/chromebrew:${CONTAINER_HOME}/chromebrew"
+VOLUMES+=" -v $(pwd):/output -v ${HOME}/.ssh:${CONTAINER_HOME}/.ssh"
+VOLUMES+=" -v ${HOME}/.git-prompt.sh:${CONTAINER_HOME}/.git-prompt.sh"
+VOLUMES+=" -v ${HOME}/.gitconfig:${CONTAINER_HOME}/.gitconfig"
+VOLUMES+=" -v ${HOME}/.bashrc:${CONTAINER_HOME}/.bash_profile"
 if ! [[ $SESSION_TYPE == remote/ssh ]] && [ -d /tmp/.X11-unix ]; then
-  X11+=" -v /tmp/.X11-unix:/tmp/.X11-unix"
+  VOLUMES+=" -v /tmp/.X11-unix:/tmp/.X11-unix"
 fi
 if [ -f "$HOME"/.Xauthority ]; then
-  X11+=" -v $HOME/.Xauthority:/home/chronos/user/.Xauthority:rw"
-  X11+=" -v $HOME/.Xauthority:/home/chronos/.Xauthority:rw"
+  VOLUMES+=" -v $HOME/.Xauthority:/home/chronos/user/.Xauthority:rw"
+  VOLUMES+=" -v $HOME/.Xauthority:/home/chronos/.Xauthority:rw"
 fi
-IMAGE="satmandu/crewbuild:$BOARD-$ARCH.$MILESTONE"
+IMAGE="satmandu/$REPO:$BOARD-$ARCH.$MILESTONE"
 docker pull --platform $PLATFORM $IMAGE
 docker pull tonistiigi/binfmt
 docker run --privileged --rm tonistiigi/binfmt --install all
-echo "docker run --platform $PLATFORM --rm --net=host ${PAGER_PASSTHROUGH} ${ENVIRONMENT} -v $(pwd)/pkg_cache:/usr/local/tmp/packages -v $(pwd)/chromebrew:${CONTAINER_HOME}/chromebrew -v $(pwd):/output -h $(hostname)-$ARCH -it $IMAGE"
-docker run --platform $PLATFORM --rm --net=host ${PAGER_PASSTHROUGH} ${ENVIRONMENT} -v $(pwd)/pkg_cache:/usr/local/tmp/packages -v $(pwd)/chromebrew:${CONTAINER_HOME}/chromebrew -v $(pwd):/output -h $(hostname)-$ARCH -it $IMAGE
+echo "docker run --platform $PLATFORM --rm --net=host ${PAGER_PASSTHROUGH} ${ENVIRONMENT} ${VOLUMES} -h $(hostname)-$ARCH -it $IMAGE"
+docker run --platform $PLATFORM --rm --net=host ${PAGER_PASSTHROUGH} ${ENVIRONMENT} ${VOLUMES} -h $(hostname)-$ARCH -it $IMAGE
